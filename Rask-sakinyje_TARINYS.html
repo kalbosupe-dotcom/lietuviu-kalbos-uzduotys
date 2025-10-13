@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rask-TARINI-sakinyje</title>
+    <style>
+        /* BENDRIEJI STILIAI DISLEKSIKAMS */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.5;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .card-container {
+            width: 90%;
+            max-width: 800px;
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            padding: 30px;
+            text-align: center;
+        }
+
+        #task-title {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4CAF50; /* Žalia Tarinio spalva */
+            margin-bottom: 20px;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        /* ATMINTINĖS STILIAI */
+        #memo-content {
+            display: none; /* Paslėpta, kai rodoma užduotis */
+        }
+        .memo-box {
+            background-color: #e8f5e9; /* Šviesiai žalia */
+            border: 2px solid #4CAF50;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            margin-bottom: 30px;
+        }
+        .memo-box h3 {
+            color: #4CAF50;
+            margin-top: 0;
+            font-size: 1.3em;
+            border-bottom: 1px dashed #4CAF50;
+            padding-bottom: 5px;
+        }
+        .memo-box p {
+            font-size: 1.1em;
+            margin: 8px 0;
+        }
+
+        /* Žodžių mygtukai */
+        .word-button {
+            display: inline-block;
+            padding: 8px 15px;
+            margin: 5px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            font-size: 1.3em;
+            font-weight: 500;
+        }
+
+        .word-button:hover:not(.disabled) {
+            background-color: #f0f0f0;
+        }
+
+        /* BŪSENOS */
+        .word-button.correct {
+            background-color: #d4edda !important; /* Žalia (tinka tariniui) */
+            border-color: #4CAF50 !important;
+            color: #155724;
+            font-weight: bold;
+        }
+
+        .word-button.incorrect {
+            background-color: #f8d7da !important; /* Raudona */
+            border-color: #F44336 !important;
+            color: #721c24;
+        }
+        .word-button.disabled {
+            cursor: default;
+        }
+
+        /* Mygtuko stiliai */
+        #check-btn {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            background-color: #4CAF50; /* Žalia */
+            color: white;
+            margin-top: 20px;
+        }
+        
+        #check-btn.continue {
+            background-color: #2196F3; /* Mėlyna */
+        }
+        #check-btn:hover:not(.disabled) {
+            transform: scale(1.02);
+        }
+
+        /* Rezultatų stiliai */
+        #results-display {
+            padding: 20px;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+        }
+        #results-display h3 {
+            color: #4CAF50;
+            font-size: 1.8em;
+        }
+        #results-display p {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card-container">
+    <h2 id="task-title">Tarinys (KĄ VEIKIA? KOKS YRA?)</h2>
+    
+    <div id="quiz-content">
+        <div id="words-container"></div>
+        <div id="message" style="margin-top: 15px; min-height: 30px;"></div>
+    </div>
+    
+    <div id="memo-content">
+        <div class="memo-box">
+            <h3>🟢 TARINYS</h3>
+            <p><strong>KAS TAI?</strong> Pagrindinė sakinio dalis, nurodanti, <strong>ką veiksnys veikia</strong> arba koks jis yra.</p>
+            <p><strong>KLAUSIMAI:</strong> KĄ VEIKIA? KĄ DARO? KOKS YRA? KOKIA YRA?</p>
+            <p><strong>DAŽNIAUSIAI BŪNA:</strong> Veiksmažodis.</p>
+            <p><strong>PAVYZDYS:</strong> Saulė <span style="color: #4CAF50; font-weight: bold;">šviečia</span>. (KĄ VEIKIA?)</p>
+        </div>
+        <p>Paspauskite <strong>Toliau</strong> ir pradėkite ieškoti tarinio 10-yje sakinių.</p>
+    </div>
+
+    <button id="check-btn" onclick="handleButtonClick()">Pradėti</button>
+</div>
+
+<script>
+    // ----------------------------------------------------
+    // TARINIO DUOMENYS
+    // ----------------------------------------------------
+    const questions = [
+        ["Pavasarį", "gėlės", "pražydo", "ryškiomis", "spalvomis"],
+        ["Visi", "mokiniai", "perskaitė", "nurodytą", "knygą"],
+        ["Senelis", "buvo", "labai", "išmintingas", "ir", "ramus"], // Sudėtinis Tarinys
+        ["Saulė", "švietė", "danguje", "visą", "dieną"],
+        ["Vakar", "vakarą", "žiūrėjome", "naują", "lietuvišką", "filmą"],
+        ["Lietuva", "yra", "Baltijos", "valstybė"], // Būtojo laiko tarinys
+        ["Kaimynai", "atvyko", "aplankyti", "mūsų", "šią", "savaitę"],
+        ["Medžiai", "numetė", "lapus", "prasidėjus", "rudeniui"],
+        ["Kelionė", "į", "kalnus", "buvo", "ilga", "bet", "įdomi"], // Būtojo laiko tarinys
+        ["Mes", "išmokome", "visus", "naujus", "veiksmažodžius"]
+    ];
+
+    // Sudėtiniams tariniams naudojame abu žodžius: "buvo išmintingas" ir "yra" (Lietuva yra)
+    const answers = [
+        "pražydo", 
+        "perskaitė", 
+        "buvo", 
+        "švietė", 
+        "žiūrėjome", 
+        "yra", 
+        "atvyko", 
+        "numetė", 
+        "buvo", 
+        "išmokome"
+    ];
+    
+        
+    let currentCardIndex = 0; 
+    let selectedWord = null;
+    let isChecked = false;
+    let totalCorrect = 0;
+    const totalQuestions = questions.length;
+
+    const quizContent = document.getElementById('quiz-content');
+    const memoContent = document.getElementById('memo-content');
+    let wordsContainer = document.getElementById('words-container'); // Gali tekti atnaujinti, jei bus perrašytas HTML
+    let messageDiv = document.getElementById('message'); // Gali tekti atnaujinti
+    const checkBtn = document.getElementById('check-btn');
+    const taskTitle = document.getElementById('task-title');
+
+    /** Rodo Tarinio apibrėžimo atmintinę */
+    function showMemoCard() {
+        taskTitle.textContent = "1 Kortelė: TARINIO ATMINTINĖ";
+        quizContent.style.display = 'none';
+        memoContent.style.display = 'block';
+        
+        checkBtn.textContent = "Toliau";
+        checkBtn.classList.add('continue');
+        checkBtn.style.backgroundColor = '#2196F3'; 
+    }
+
+    /** Įkelia kitą užduoties kortelę */
+    function loadQuestion() {
+        if (currentCardIndex > totalQuestions) {
+            showResults();
+            return;
+        }
+        
+        memoContent.style.display = 'none';
+        quizContent.style.display = 'block';
+
+        taskTitle.textContent = `Užduotis ${currentCardIndex}/${totalQuestions}: Raskite TARINĮ`;
+        
+        const questionIndex = currentCardIndex - 1;
+        const currentSentence = questions[questionIndex];
+
+        wordsContainer.innerHTML = '';
+        messageDiv.textContent = '';
+        selectedWord = null;
+        isChecked = false;
+        checkBtn.textContent = "Pasitikrinti";
+        checkBtn.classList.remove('continue');
+        checkBtn.style.backgroundColor = '#4CAF50'; 
+
+        // Generuojame mygtukus (žodžius)
+        currentSentence.forEach(word => {
+            const button = document.createElement('span');
+            button.className = 'word-button';
+            button.textContent = word;
+            button.onclick = () => selectWord(button);
+            wordsContainer.appendChild(button);
+        });
+    }
+
+    /** Rodo galutinius rezultatus */
+    function showResults() {
+        const scorePercentage = ((totalCorrect / totalQuestions) * 100).toFixed(0);
+        
+        quizContent.innerHTML = `
+            <div id="results-display">
+                <h3>Užduotis Baigta! 🎉</h3>
+                <p>Teisingai atsakėte į <strong>${totalCorrect}</strong> iš ${totalQuestions} klausimų.</p>
+                <p style="font-size: 2.5em; font-weight: bold; color: ${scorePercentage >= 70 ? '#4CAF50' : '#F44336'}; margin: 15px 0;">
+                    Galutinis įvertinimas: ${scorePercentage}%
+                </p>
+                <p>Puikus darbas įtvirtinant TARINIO radimo įgūdžius!</p>
+            </div>
+        `;
+        checkBtn.style.display = 'none';
+        taskTitle.textContent = "Rezultatai";
+    }
+
+    /** Pasirenkamas žodis */
+    function selectWord(button) {
+        if (isChecked) return; 
+
+        // Atšaukiame ankstesnį pasirinkimą
+        wordsContainer.querySelectorAll('.word-button').forEach(btn => {
+            btn.classList.remove('selected');
+            btn.style.backgroundColor = '#ffffff';
+        });
+
+        // Pažymime naują pasirinkimą
+        button.classList.add('selected');
+        button.style.backgroundColor = '#bbdefb'; 
+        selectedWord = button.textContent;
+    }
+
+    /** Tikrina atsakymą ir valdo navigaciją */
+    function handleButtonClick() {
+        if (currentCardIndex === 0) {
+            currentCardIndex = 1;
+            loadQuestion();
+            return;
+        }
+        
+        if (!isChecked) {
+            checkAnswer();
+        } else {
+            currentCardIndex++;
+            loadQuestion();
+        }
+    }
+
+    /** Tikrinimo logika */
+    function checkAnswer() {
+        if (!selectedWord) {
+            messageDiv.textContent = "Pasirinkite žodį prieš tikrindami!";
+            messageDiv.style.color = '#F44336';
+            return;
+        }
+
+        const questionIndex = currentCardIndex - 1;
+        const correctAnswerString = answers[questionIndex]; // "buvo išmintingas"
+        const correctWords = correctAnswerString.split(' '); // ["buvo", "išmintingas"]
+        const buttons = wordsContainer.querySelectorAll('.word-button');
+        let isCorrect = false;
+
+        buttons.forEach(btn => {
+            btn.classList.add('disabled');
+            
+            // Tikriname, ar mygtuko žodis yra teisingo tarinio dalis
+            if (correctWords.includes(btn.textContent)) {
+                // Rodo teisingą atsakymą (pažymėjus bet kurią dalį teisingai)
+                btn.classList.add('correct');
+                if (btn.classList.contains('selected')) {
+                    isCorrect = true; // Pasirinkta bet kuri teisinga dalis
+                }
+            } else if (btn.classList.contains('selected')) {
+                // Rodo neteisingą pasirinkimą
+                btn.classList.add('incorrect');
+            }
+        });
+
+        if (isCorrect) {
+            messageDiv.textContent = "Teisingai! 🎉 Tai yra Tarinys (KĄ VEIKIA?).";
+            messageDiv.style.color = '#4CAF50';
+            totalCorrect++;
+        } else {
+             // Rodo visą teisingą tarinį (pvz., "buvo išmintingas")
+            messageDiv.textContent = `Neteisingai. Teisingas Tarinys yra "${correctAnswerString.replace(/ /g, ' ')}".`;
+            messageDiv.style.color = '#F44336';
+        }
+
+        isChecked = true;
+        checkBtn.textContent = "Toliau";
+        checkBtn.classList.add('continue');
+    }
+
+    // Paleidžiame pirmąją kortelę (Atmintinę) užkrovus puslapį
+    showMemoCard();
+</script>
+
+</body>
+</html>

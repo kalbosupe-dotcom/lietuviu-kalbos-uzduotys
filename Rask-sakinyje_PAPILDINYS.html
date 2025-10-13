@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rask-sakinyje-Papildinys</title>
+    <style>
+        /* BENDRIEJI STILIAI DISLEKSIKAMS */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.5;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .card-container {
+            width: 90%;
+            max-width: 800px;
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            padding: 30px;
+            text-align: center;
+        }
+
+        #task-title {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff9800; /* Oranžinė Papildinio spalva */
+            margin-bottom: 20px;
+            border-bottom: 3px solid #ff9800;
+            padding-bottom: 10px;
+        }
+
+        /* ATMINTINĖS STILIAI */
+        #memo-content {
+            display: none; 
+        }
+        .memo-box {
+            background-color: #fff3e0; /* Šviesiai oranžinė */
+            border: 2px solid #ff9800;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            margin-bottom: 30px;
+        }
+        .memo-box h3 {
+            color: #ff9800;
+            margin-top: 0;
+            font-size: 1.3em;
+            border-bottom: 1px dashed #ff9800;
+            padding-bottom: 5px;
+        }
+        .memo-box p {
+            font-size: 1.1em;
+            margin: 8px 0;
+        }
+
+        /* Žodžių mygtukai */
+        .word-button {
+            display: inline-block;
+            padding: 8px 15px;
+            margin: 5px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            font-size: 1.3em;
+            font-weight: 500;
+        }
+
+        .word-button:hover:not(.disabled) {
+            background-color: #f0f0f0;
+        }
+
+        /* BŪSENOS */
+        .word-button.correct {
+            background-color: #ffe0b2 !important; /* Šviesiai oranžinė, kaip Papildinys */
+            border-color: #ff9800 !important;
+            color: #e65100;
+            font-weight: bold;
+        }
+
+        .word-button.incorrect {
+            background-color: #f8d7da !important; 
+            border-color: #F44336 !important;
+            color: #721c24;
+        }
+        .word-button.disabled {
+            cursor: default;
+        }
+
+        /* Mygtuko stiliai */
+        #check-btn {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            background-color: #ff9800; /* Oranžinė */
+            color: white;
+            margin-top: 20px;
+        }
+        
+        #check-btn.continue {
+            background-color: #2196F3; 
+        }
+        #check-btn:hover:not(.disabled) {
+            transform: scale(1.02);
+        }
+
+        /* Rezultatų stiliai */
+        #results-display {
+            padding: 20px;
+            border: 2px solid #ff9800;
+            border-radius: 10px;
+        }
+        #results-display h3 {
+            color: #ff9800;
+            font-size: 1.8em;
+        }
+        #results-display p {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card-container">
+    <h2 id="task-title">Papildinys (KĄ? KO? KAM? KUO?)</h2>
+    
+    <div id="quiz-content">
+        <div id="words-container"></div>
+        <div id="message" style="margin-top: 15px; min-height: 30px;"></div>
+    </div>
+    
+    <div id="memo-content">
+        <div class="memo-box">
+            <h3>🟠 PAPILDINYS</h3>
+            <p><strong>KAS TAI?</strong> Antrininkė sakinio dalis, papildanti tarinį ir nurodanti, į ką <strong>nukreiptas veiksmas</strong>.</p>
+            <p><strong>KLAUSIMAI:</strong> KĄ? KO? KAM? KUO? KAME?</p>
+            <p><strong>DAŽNIAUSIAI BŪNA:</strong> Daiktavardis.</p>
+            <p><strong>PAVYZDYS:</strong> Berniukas skaito <span style="color: #ff9800; font-weight: bold;">knygą</span>. (KĄ?)</p>
+        </div>
+        <p>Paspauskite <strong>Toliau</strong> ir pradėkite ieškoti papildinio 10-yje sakinių.</p>
+    </div>
+
+    <button id="check-btn" onclick="handleButtonClick()">Pradėti</button>
+</div>
+
+<script>
+    // ----------------------------------------------------
+    // PAPILDINIO DUOMENYS
+    // Pastaba: Sudėtiniams papildiniams (pvz., "įdomią knygą") atsakymas formuojamas iš kelių žodžių.
+    // ----------------------------------------------------
+    const questions = [
+        ["Klasėje", "išmokome", "mįsles"],
+        ["Mokytojas", "padėjo", "čempionui", "parengti", "programą"],
+        ["Aš", "ilgėjausi", "tėvynės"],
+        ["Gydytojai", "kalbėjo", "apie", "ląsteles"],
+        ["Vaikai", "džiaugėsi", "pūga"],
+        ["Mes", "skaitėme", "knygą"],
+        ["Jis", "nuolat", "galvoja", "apie", "ateitį"],
+        ["Turime", "didžiuotis", "kultūra"],
+        ["Senelis", "pasakojo", "anūkams"],
+        ["Daug", "kalbėta", "apie", "šalną"]
+    ];
+
+    // Sudėtiniai papildiniai (pvz., "įdomią knygą") turi būti sujungti čia
+    const answers = [
+        "mįsles", 
+        "čempionui", 
+        "tėvynės", 
+        "ląsteles", 
+        "pūga", 
+        "knygą",
+        "ateitį", 
+        "kultūra",
+        "anūkams", 
+        "šalną"
+    ];
+    
+    let currentCardIndex = 0; 
+    let selectedWords = []; // Naudojame masyvą, nes gali būti sudėtinis papildinys
+    let isChecked = false;
+    let totalCorrect = 0;
+    const totalQuestions = questions.length;
+
+    const quizContent = document.getElementById('quiz-content');
+    const memoContent = document.getElementById('memo-content');
+    const wordsContainer = document.getElementById('words-container');
+    const checkBtn = document.getElementById('check-btn');
+    const messageDiv = document.getElementById('message');
+    const taskTitle = document.getElementById('task-title');
+
+    /** Rodo Tarinio apibrėžimo atmintinę */
+    function showMemoCard() {
+        taskTitle.textContent = "1 Kortelė: PAPILDINIO ATMINTINĖ";
+        quizContent.style.display = 'none';
+        memoContent.style.display = 'block';
+        
+        checkBtn.textContent = "Toliau";
+        checkBtn.classList.add('continue');
+        checkBtn.style.backgroundColor = '#2196F3'; 
+    }
+
+    /** Įkelia kitą užduoties kortelę */
+    function loadQuestion() {
+        if (currentCardIndex > totalQuestions) {
+            showResults();
+            return;
+        }
+        
+        memoContent.style.display = 'none';
+        quizContent.style.display = 'block';
+
+        taskTitle.textContent = `Užduotis ${currentCardIndex}/${totalQuestions}: Raskite PAPILDINĮ`;
+        
+        const questionIndex = currentCardIndex - 1;
+        const currentSentence = questions[questionIndex];
+
+        wordsContainer.innerHTML = '';
+        messageDiv.textContent = '';
+        selectedWords = [];
+        isChecked = false;
+        checkBtn.textContent = "Pasitikrinti";
+        checkBtn.classList.remove('continue');
+        checkBtn.style.backgroundColor = '#ff9800'; // Papildinio spalva
+
+        // Generuojame mygtukus (žodžius)
+        currentSentence.forEach(word => {
+            const button = document.createElement('span');
+            button.className = 'word-button';
+            button.textContent = word;
+            button.onclick = () => selectWord(button);
+            wordsContainer.appendChild(button);
+        });
+    }
+
+    /** Rodo galutinius rezultatus */
+    function showResults() {
+        const scorePercentage = ((totalCorrect / totalQuestions) * 100).toFixed(0);
+        
+        quizContent.innerHTML = `
+            <div id="results-display">
+                <h3>Užduotis Baigta! 🎉</h3>
+                <p>Teisingai atsakėte į <strong>${totalCorrect}</strong> iš ${totalQuestions} klausimų.</p>
+                <p style="font-size: 2.5em; font-weight: bold; color: ${scorePercentage >= 70 ? '#4CAF50' : '#F44336'}; margin: 15px 0;">
+                    Galutinis įvertinimas: ${scorePercentage}%
+                </p>
+                <p>Puikus darbas įtvirtinant PAPILDINIO radimo įgūdžius!</p>
+            </div>
+        `;
+        checkBtn.style.display = 'none';
+        taskTitle.textContent = "Rezultatai";
+    }
+
+    /** Pasirenkamas žodis (palaiko kelių žodžių pasirinkimą sudėtiniam papildiniui) */
+    function selectWord(button) {
+        if (isChecked) return; 
+
+        if (button.classList.contains('selected')) {
+            // Panaikinti pasirinkimą
+            button.classList.remove('selected');
+            button.style.backgroundColor = '#ffffff';
+            selectedWords = selectedWords.filter(w => w !== button.textContent);
+        } else {
+            // Pridėti pasirinkimą
+            button.classList.add('selected');
+            button.style.backgroundColor = '#ffe0b2'; // Šviesiai oranžinė
+            selectedWords.push(button.textContent);
+        }
+    }
+
+    /** Tikrina atsakymą ir valdo navigaciją */
+    function handleButtonClick() {
+        if (currentCardIndex === 0) {
+            currentCardIndex = 1;
+            loadQuestion();
+            return;
+        }
+        
+        if (!isChecked) {
+            checkAnswer();
+        } else {
+            currentCardIndex++;
+            loadQuestion();
+        }
+    }
+
+    /** Tikrinimo logika */
+    function checkAnswer() {
+        if (selectedWords.length === 0) {
+            messageDiv.textContent = "Pasirinkite žodį(-ius) prieš tikrindami!";
+            messageDiv.style.color = '#F44336';
+            return;
+        }
+
+        const questionIndex = currentCardIndex - 1;
+        const correctAnswerString = answers[questionIndex]; 
+        const correctWords = correctAnswerString.split(' ');
+        const buttons = wordsContainer.querySelectorAll('.word-button');
+        let isCorrect = false;
+
+        // Suformuojame mokinio atsakymą iš pasirinktų žodžių
+        const userSelectedWords = Array.from(buttons)
+            .filter(btn => btn.classList.contains('selected'))
+            .map(btn => btn.textContent);
+
+        // Patikriname, ar abiejų masyvų turinys yra identiškas (nepriklausomai nuo tvarkos)
+        const checkArrayEquality = (arr1, arr2) => 
+            arr1.length === arr2.length && arr1.every(val => arr2.includes(val));
+        
+        isCorrect = checkArrayEquality(userSelectedWords, correctWords);
+
+        // Atvaizduojame rezultatus
+        buttons.forEach(btn => {
+            btn.classList.add('disabled');
+            const word = btn.textContent;
+            
+            if (correctWords.includes(word)) {
+                // Paryškiname teisingas dalis
+                btn.classList.add('correct');
+            } else if (userSelectedWords.includes(word)) {
+                // Paryškiname neteisingą pasirinkimą
+                btn.classList.add('incorrect');
+            }
+        });
+
+        if (isCorrect) {
+            messageDiv.textContent = "Teisingai! 🎉 Tai yra Papildinys.";
+            messageDiv.style.color = '#4CAF50';
+            totalCorrect++;
+        } else {
+            messageDiv.textContent = `Neteisingai. Teisingas Papildinys yra "${correctAnswerString}".`;
+            messageDiv.style.color = '#F44336';
+        }
+
+        isChecked = true;
+        checkBtn.textContent = "Toliau";
+        checkBtn.classList.add('continue');
+    }
+
+    // Paleidžiame pirmąją kortelę (Atmintinę) užkrovus puslapį
+    showMemoCard();
+</script>
+
+</body>
+</html>
